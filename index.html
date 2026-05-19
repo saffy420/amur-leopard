@@ -41,7 +41,6 @@
     color: var(--ink);
     font-family: var(--f-body);
     -webkit-font-smoothing: antialiased;
-    overflow-x: hidden;
     -webkit-tap-highlight-color: transparent;
   }
   .leo, .handle, .nav-link, .reset, .back-top,
@@ -565,7 +564,8 @@
     .wf-header { padding-bottom: 10px; margin-bottom: 16px; }
     .wf-header .title { font-size: 30px; }
 
-    .nav-bar { gap: 10px; padding: 11px 14px; }
+    /* Don't sticky-pin the nav on mobile — it eats too much screen height. */
+    .nav-bar { gap: 10px; padding: 11px 14px; position: static; backdrop-filter: none; }
     .nav-bar .logo {
       font-size: 16px;
       white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
@@ -890,7 +890,7 @@
           <h2>One body, <span class="acc">three selves,</span> a thinning gene pool.</h2>
         </div>
         <div>
-          <div class="lede">The Amur leopard holds on in a thin strip of Far East Russia. The Amur leopard holds on in a thin strip of Far East Russia. Every individual is a little different, coat density, rosette spacing, body length, all shaped by wherever it was born. When a leopard gets poached it is not just one cat gone, it is a genotype that existed nowhere else. Traps set for deer catch leopards as bycatch, and pelts and bones still cross the border on black markets. With only around 120 adults left, even a few deaths a year push the species closer to a point it cannot come back from.</div>
+          <div class="lede">The Amur leopard lives on a thin strip of Far East Russia. Every individual is a little different: coat density, rosette spacing, and body length, all shaped by wherever it was born. When a leopard gets poached it's not just one cat gone, it's a genotype that existed nowhere else. Traps set for deer catch leopards as bycatch, and pelts and bones still cross the border on black markets. With only around 120 adults left, even a few deaths a year push the species closer to a point it cannot come back from.</div>
           <div class="stats">
             <div class="stat"><div class="n">~128</div><div class="l">wild adults, 2023</div></div>
             <div class="stat"><div class="n">#1</div><div class="l">cause: poaching </div></div>
