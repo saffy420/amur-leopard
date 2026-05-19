@@ -39,6 +39,12 @@
     color: var(--ink);
     font-family: var(--f-body);
     -webkit-font-smoothing: antialiased;
+    overflow-x: hidden;
+    -webkit-tap-highlight-color: transparent;
+  }
+  .leo, .handle, .nav-link, .reset, .back-top,
+  .hotspot, .cb-close, .faq-item .summary {
+    touch-action: manipulation;
   }
 
   /* ============ Page frame ============ */
@@ -551,6 +557,91 @@
   }
   .meter b { color: var(--accent); font-family: var(--f-display); font-weight: 700; font-size: 18px; }
 
+  /* ============ Tablet / mobile ============ */
+  @media (max-width: 760px) {
+    .wf { padding: 16px 14px 56px; }
+    .wf-header { padding-bottom: 10px; margin-bottom: 16px; }
+    .wf-header .title { font-size: 30px; }
+
+    .nav-bar { gap: 10px; padding: 11px 14px; }
+    .nav-bar .logo {
+      font-size: 16px;
+      white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+      min-width: 0;
+    }
+    .nav-bar .links { gap: 2px; flex: none; }
+    .nav-bar .nav-link { font-size: 12px; padding: 6px 7px; }
+
+    /* Taller portrait stage so each narrow column still shows the cat. */
+    .hybrid-stage .panes { height: clamp(440px, 74vh, 620px); }
+
+    /* Text was fixed-width for desktop clipping; let it fit the panel. */
+    .leo .body { left: 14px; right: 14px; bottom: 16px; width: auto; }
+    .leo .body .h { font-size: clamp(19px, 5.4vw, 30px); }
+    .leo .tag { font-size: 10px; padding: 4px 8px; }
+
+    /* Hotspot a little bigger for fingertips. */
+    .leo .hotspot { width: 42px; height: 42px; }
+
+    /* Match the grab area to the visible 44px puck. */
+    .handle { width: 44px; }
+
+    /* No hover on touch — surface the affordance permanently. */
+    .leo:not(.focused) .click-cue {
+      opacity: 1; transform: none; pointer-events: none;
+      font-size: 12px; padding: 4px 11px;
+    }
+
+    /* The angled SVG connector + tiny 34vw card don't work on a phone.
+       Drop the line and turn the card into a readable bottom sheet that
+       escapes the panel's overflow clip via position:fixed. */
+    .leo .callout-svg { display: none; }
+    .leo .callout-box {
+      position: fixed;
+      left: 12px; right: 12px; bottom: 12px;
+      top: auto;
+      width: auto; max-width: none;
+      padding: 16px 44px 16px 16px;
+      border-radius: 8px;
+      box-shadow: var(--shadow);
+      z-index: 95;
+    }
+    .callout-box .cb-text { font-size: 15px; }
+    .callout-box .cb-close { font-size: 26px; top: 8px; right: 10px; padding: 6px 10px; opacity: 0.8; }
+
+    .ctrl-row { flex-wrap: wrap; gap: 10px; padding: 11px 14px; font-size: 12px; }
+    .ctrl-row .meter { margin-left: 0; width: 100%; gap: 12px; flex-wrap: wrap; }
+
+    .below { padding: 26px 16px; }
+    .intro {
+      grid-template-columns: 1fr;
+      gap: 20px;
+      padding-bottom: 22px; margin-bottom: 22px;
+    }
+    .intro h2 { font-size: clamp(30px, 8vw, 46px); }
+    .intro .lede { font-size: 16px; line-height: 1.5; }
+    .stats { gap: 10px; margin-top: 16px; }
+    .stat { padding: 12px; }
+    .stat .n { font-size: 32px; }
+    .stat .l { font-size: 9px; }
+
+    .faq-head h3 { font-size: 30px; }
+    .faq-item { padding: 14px 4px; }
+    .faq .summary { gap: 10px; }
+    .faq .q-num { min-width: 28px; font-size: 12px; }
+    .faq .q { font-size: 19px; }
+    .faq .chev { font-size: 28px; }
+    .faq .a { padding: 12px 0 4px 38px; font-size: 15px; }
+    .faq .a .ex { font-size: 14px; }
+
+    .foot { gap: 10px; margin-top: 22px; }
+  }
+
+  @media (max-width: 400px) {
+    .stats { grid-template-columns: 1fr 1fr; }
+    .stats .stat:first-child { grid-column: 1 / -1; }
+    .nav-bar .nav-link { font-size: 11px; padding: 6px 5px; }
+  }
 
 </style>
 </head>
@@ -648,7 +739,7 @@
       </div>
       <div class="ctrl-row">
         <button class="reset" id="resetBtn">↺ reset to equal thirds</button>
-        <span>click a panel to focus it · drag amber bars to fine-tune</span>
+        <span>tap a panel to focus · drag the amber bars to fine-tune</span>
         <div class="meter">
           <span>wounded <b id="m1">33%</b></span>
           <span>summer <b id="m2">33%</b></span>
