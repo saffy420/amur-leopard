@@ -636,50 +636,75 @@
   .mobile-sheet-scrim { display: none; }
 
   @media (max-width: 760px) {
+    /* Disclaimer is now a centered, one-shot modal — not a top banner. */
     .mobile-disclaimer {
       display: flex;
+      position: fixed;
+      inset: 0;
       align-items: center;
-      gap: 10px;
-      padding: 10px 14px;
-      background: var(--paper-2);
-      border-bottom: 1px solid var(--accent);
-      color: var(--ink);
-      font-family: var(--f-mono);
-      font-size: 11px;
-      line-height: 1.4;
-      letter-spacing: 0.04em;
-      position: relative;
-      z-index: 90;
+      justify-content: center;
+      padding: 20px;
+      background: rgba(0,0,0,0.7);
+      backdrop-filter: blur(4px);
+      z-index: 300;
     }
     .mobile-disclaimer.dismissed { display: none; }
-    .mobile-disclaimer .md-text { flex: 1; }
-    .mobile-disclaimer .md-text .acc { color: var(--accent); }
-    .mobile-disclaimer .md-dismiss {
-      flex: none;
-      background: transparent;
+    .mobile-disclaimer .md-card {
+      background: var(--paper-2);
       border: 1px solid var(--accent);
-      color: var(--accent);
-      border-radius: 50%;
-      width: 28px; height: 28px;
-      font-size: 16px; line-height: 1;
-      cursor: pointer;
-      padding: 0;
+      border-radius: 12px;
+      padding: 28px 22px 22px;
+      max-width: 360px;
+      width: 100%;
+      text-align: center;
+      box-shadow: 0 14px 48px rgba(0,0,0,0.7);
+      color: var(--ink);
     }
+    .mobile-disclaimer .md-icon {
+      width: 78px; height: 78px;
+      display: block;
+      margin: 0 auto 14px;
+      filter: drop-shadow(0 4px 12px rgba(0,0,0,0.5));
+    }
+    .mobile-disclaimer .md-text {
+      font-family: var(--f-body);
+      font-size: 15px;
+      line-height: 1.55;
+      margin: 0 0 20px;
+      color: var(--ink);
+      text-wrap: pretty;
+    }
+    .mobile-disclaimer .md-text .acc { color: var(--accent); font-weight: 700; }
+    .mobile-disclaimer .md-dismiss {
+      font-family: var(--f-body);
+      font-weight: 700;
+      font-size: 14px;
+      background: var(--accent);
+      color: var(--paper);
+      border: none;
+      border-radius: 22px;
+      padding: 10px 26px;
+      cursor: pointer;
+      letter-spacing: 0.02em;
+    }
+    .mobile-disclaimer .md-dismiss:hover,
+    .mobile-disclaimer .md-dismiss:active { background: var(--accent-2); color: var(--ink); }
 
+    /* No dim/scrim for the bottom sheet — user wants the page fully visible. */
     .mobile-sheet-scrim {
       display: block;
       position: fixed;
       inset: 0;
-      background: rgba(0,0,0,0.45);
-      z-index: 199;
-      opacity: 0;
+      background: transparent;
       pointer-events: none;
-      transition: opacity .25s ease;
+      z-index: 199;
     }
-    .mobile-sheet-scrim.open {
-      opacity: 1;
-      pointer-events: auto;
-    }
+    /* Also undo the desktop "inspect-active" dimming on mobile — the sheet
+       is its own UI and shouldn't darken the rest of the exhibit. */
+    .hybrid-stage.inspect-active .bg-layer,
+    .hybrid-stage.inspect-active .leo:not(.info-open) .tag,
+    .hybrid-stage.inspect-active .leo:not(.info-open) .body,
+    .hybrid-stage.inspect-active .handle { opacity: 1; }
 
     .mobile-sheet {
       display: block;
@@ -735,9 +760,12 @@
 </head>
 <body>
 
-<div class="mobile-disclaimer" id="mobileDisclaimer" role="note">
-  <span class="md-text"><span class="acc">Heads up —</span> this exhibit was built for desktop. The mobile view is a compressed version of the experience.</span>
-  <button type="button" class="md-dismiss" aria-label="Dismiss">×</button>
+<div class="mobile-disclaimer" id="mobileDisclaimer" role="dialog" aria-modal="true" aria-labelledby="mdText">
+  <div class="md-card">
+    <img class="md-icon" src="assets/rotate-phone.png" alt="" aria-hidden="true" />
+    <p class="md-text" id="mdText">It seems like <span class="acc">you're on mobile</span> — this exhibit was built for desktop. However, if you want to maximize your mobile experience, please turn your phone sideways to landscape mode. Have fun and enjoy!</p>
+    <button type="button" class="md-dismiss">Got it</button>
+  </div>
 </div>
 
 <div class="nav-bar" id="navBar">
@@ -1083,28 +1111,39 @@
     }
   });
 
-  sheetClose.addEventListener('click', () => {
+  function dismissSheetFromAnywhere() {
     panes.forEach(p => p.classList.remove('info-open'));
     closeMobileSheet();
     syncInspectActive();
-  });
-  mobileSheetScrim.addEventListener('click', () => {
-    panes.forEach(p => p.classList.remove('info-open'));
-    closeMobileSheet();
-    syncInspectActive();
-  });
+  }
+  sheetClose.addEventListener('click', dismissSheetFromAnywhere);
+
+  // Auto-close the bottom sheet once the user has scrolled past roughly the
+  // midpoint of the exhibit — the sheet is anchored to a specific panel, so
+  // letting it linger when the user moves on to the text below is confusing.
+  let scrollRaf = null;
+  window.addEventListener('scroll', () => {
+    if (!mobileSheet.classList.contains('open')) return;
+    if (scrollRaf != null) return;
+    scrollRaf = requestAnimationFrame(() => {
+      scrollRaf = null;
+      const r = stage.getBoundingClientRect();
+      // Once more than half the exhibit has scrolled above the viewport top.
+      if (r.top < -r.height * 0.5) dismissSheetFromAnywhere();
+    });
+  }, { passive: true });
 
   // ----- Mobile disclaimer dismissal (persists across visits) -----
   const disclaimer = document.getElementById('mobileDisclaimer');
   if (disclaimer) {
     try {
-      if (localStorage.getItem('mobileDisclaimerDismissed') === '1') {
+      if (localStorage.getItem('mobileDisclaimerDismissed_v2') === '1') {
         disclaimer.classList.add('dismissed');
       }
     } catch (_) {}
     disclaimer.querySelector('.md-dismiss').addEventListener('click', () => {
       disclaimer.classList.add('dismissed');
-      try { localStorage.setItem('mobileDisclaimerDismissed', '1'); } catch (_) {}
+      try { localStorage.setItem('mobileDisclaimerDismissed_v2', '1'); } catch (_) {}
     });
   }
 
