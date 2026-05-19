@@ -1,0 +1,1007 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<title>Three Selves, One Species: The Amur Leopard</title>
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:wght@500;700;900&family=Inter+Tight:wght@400;500;700&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet" />
+<style>
+  /* ============ CARBON+ palette (text legibility upgraded) ============ */
+  :root {
+    --paper:   #0e0e0e;
+    --paper-2: #181818;
+    --paper-3: #242424;
+    --ink:     #f4ede0;
+    --ink-dim: #b3a98f;
+    --line:    #3a3530;
+    --accent:  oklch(0.84 0.18 68);
+    --accent-2: oklch(0.66 0.14 30);
+    --shadow:  0 6px 32px rgba(0,0,0,0.6);
+
+    /* Single committed typography — no picker. */
+    --f-display: 'Bricolage Grotesque', sans-serif;
+    --f-body:    'Inter Tight', sans-serif;
+    --f-mono:    'IBM Plex Mono', monospace;
+    --display-weight: 900;
+    --display-letterspacing: -0.03em;
+    --display-line-height: 1;
+  }
+
+  * { box-sizing: border-box; }
+  html {
+    scroll-behavior: smooth;
+  }
+  html, body {
+    margin: 0;
+    background: var(--paper);
+    color: var(--ink);
+    font-family: var(--f-body);
+    -webkit-font-smoothing: antialiased;
+  }
+
+  /* ============ Page frame ============ */
+  .wf {
+    padding: 28px 24px 80px;
+  }
+  .wf-header {
+    display: flex; justify-content: flex-start; align-items: flex-end;
+    border-bottom: 1px dashed var(--line);
+    padding-bottom: 12px; margin-bottom: 22px;
+  }
+  .wf-header .title {
+    font-family: var(--f-display); font-weight: 700;
+    font-size: 42px; line-height: 1; margin: 4px 0 0; color: var(--ink);
+  }
+  .wf-header .title .acc { color: var(--accent); }
+
+  .page {
+    border: 1px solid var(--line);
+    background: var(--paper);
+    box-shadow: var(--shadow);
+    border-radius: 6px;
+    overflow: hidden;
+  }
+  /* ============ Persistent top nav ============ */
+  .nav-bar {
+    position: sticky; top: 0; z-index: 80;
+    display: flex; align-items: center; gap: 24px;
+    padding: 14px 28px;
+    background: rgba(14,14,14,0.92);
+    backdrop-filter: blur(10px);
+    border-bottom: 1px solid var(--line);
+    color: var(--ink);
+  }
+  .nav-bar .logo {
+    font-family: var(--f-display); font-weight: 900; font-size: 22px;
+    color: var(--ink);
+    text-decoration: none;
+    letter-spacing: -0.02em;
+  }
+  .nav-bar .logo .acc { color: var(--accent); }
+  .nav-bar .links {
+    margin-left: auto;
+    display: flex; gap: 4px; align-items: center;
+  }
+  .nav-bar .nav-link {
+    font-family: var(--f-body);
+    font-size: 13px;
+    letter-spacing: 0.02em;
+    color: var(--ink-dim);
+    background: transparent;
+    border: none;
+    padding: 6px 10px;
+    cursor: pointer;
+  }
+  .nav-bar .links {
+    position: relative;
+  }
+  .nav-indicator {
+    position: absolute;
+    bottom: -14px;
+    height: 2px;
+    background: var(--accent);
+    pointer-events: none;
+    border-radius: 1px;
+  }
+
+  /* ============ HYBRID stage: drag handles + click to focus ============ */
+  .hybrid-stage {
+    position: relative;
+    background: #000;
+    border-bottom: 1px solid var(--line);
+  }
+  .hybrid-stage .panes {
+    display: flex;
+    /* Stage scales with viewport but is height-constrained so the bg + leopard
+       photo doesn't get blown up to absurd sizes on wide screens. The image
+       layers use background-size: cover + position: center bottom so the
+       leopard's feet stay anchored to the stage floor and any forced crop
+       happens to the sky/trees up top, not the silhouette itself. */
+    height: clamp(480px, 50vw, 720px);
+    user-select: none;
+  }
+  .hybrid-stage.dragging .leo { transition: none !important; }
+
+  .leo {
+    position: relative;
+    overflow: hidden;
+    flex: 1 1 0%;
+    min-width: 0;
+    cursor: pointer;
+    transition: flex-grow .55s cubic-bezier(.55,.05,.2,1);
+    background: #000;
+  }
+  /* ============ LAYERED COMPOSITION ============
+     Each panel is a window onto its own bg + leopard composite. The
+     .composition div spans the FULL stage width (anchored to stage
+     coordinates by JS, not panel coordinates); the panel's overflow:hidden
+     clips it. As a panel widens, more of its composition is revealed; as
+     it narrows, parts disappear off-screen at the seam with its neighbour.
+
+     bg-layer       — raw environment photo.
+     leopard-layer  — same-pose transparent leopard PNG, sized + positioned
+                      so it sits in the same spot it occupied in its native
+                      composite. Fades to ~20% opacity when this panel
+                      narrows past 25%. */
+  .leo .composition {
+    position: absolute;
+    top: 0; bottom: 0;
+    width: 100%;          /* JS overrides to stage width */
+    left: 0;              /* JS overrides to -panel-offset */
+    pointer-events: none;
+  }
+  .leo .bg-layer,
+  .leo .leopard-layer {
+    position: absolute; inset: 0;
+    background-size: cover;
+    /* center-align vertically so the face stays visible. bg + leopard
+       share identical positioning so they register pixel-for-pixel. */
+    background-position: center center;
+    background-repeat: no-repeat;
+  }
+  /* ============ Hotspot + callout (line + box) ============ */
+  /* Per-leo numbers (0-100, used as both % positions and SVG coords). */
+  .leo.wounded { --hot-x: 34; --hot-y: 40; --box-x: 41; --box-y: 9;  }
+  .leo.summer  { --hot-x: 48; --hot-y: 31; --box-x: 38; --box-y: 12; }
+  .leo.winter  { --hot-x: 63; --hot-y: 32; --box-x: 59; --box-y: 10; }
+
+  .leo .hotspot {
+    position: absolute;
+    left: calc(var(--hot-x) * 1%);
+    top:  calc(var(--hot-y) * 1%);
+    width: 36px; height: 36px;
+    border-radius: 50%;
+    border: 3px solid var(--accent);
+    background: transparent;
+    transform: translate(-50%, -50%);
+    cursor: pointer;
+    z-index: 6;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity .3s ease, transform .15s ease;
+    animation: hot-pulse 2.2s ease-in-out infinite;
+  }
+  .leo.show-hotspot .hotspot {
+    opacity: 1;
+    pointer-events: auto;
+  }
+  .leo.show-hotspot .hotspot:hover {
+    transform: translate(-50%, -50%) scale(1.08);
+  }
+  .leo.show-hotspot.info-open .hotspot {
+    animation: none;
+    box-shadow: 0 0 0 6px rgba(217,118,55,0.18),
+                0 0 22px var(--accent);
+  }
+  @keyframes hot-pulse {
+    0%, 100% { box-shadow: 0 0 8px var(--accent),  0 0 22px rgba(217,118,55,0.7); }
+    50%      { box-shadow: 0 0 22px var(--accent), 0 0 48px rgba(217,118,55,1);   }
+  }
+
+  .leo .callout {
+    position: absolute; inset: 0;
+    pointer-events: none;
+    opacity: 0;
+    z-index: 5;
+    transition: opacity .25s ease;
+  }
+  .leo.info-open .callout { opacity: 1; }
+
+  .leo .callout-svg {
+    position: absolute; inset: 0;
+    width: 100%; height: 100%;
+    overflow: visible;
+    opacity: 0;
+    transition: opacity .25s ease;
+    pointer-events: none;
+  }
+  .leo.info-open .callout-svg { opacity: 1; }
+  .leo .callout-svg line {
+    stroke: var(--accent);
+    stroke-width: 2px;
+    vector-effect: non-scaling-stroke;
+    stroke-linecap: square;
+  }
+  .leo .callout-svg circle.anchor {
+    fill: var(--accent);
+  }
+
+  .leo .callout-box {
+    position: absolute;
+    left: calc(var(--box-x) * 1%);
+    top:  calc(var(--box-y) * 1%);
+    width: 280px; max-width: 34vw;
+    background: rgba(14,14,14,0.94);
+    border: 1px solid var(--accent);
+    padding: 12px 32px 12px 14px;
+    color: var(--ink);
+    text-shadow: none;
+    pointer-events: auto;
+    z-index: 6;
+  }
+  .callout-box .cb-label {
+    font-family: var(--f-display);
+    font-size: 11px;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: var(--accent);
+    margin-bottom: 6px;
+  }
+  .callout-box .cb-text {
+    font-family: var(--f-body);
+    font-size: 14px; line-height: 1.45;
+    color: var(--ink);
+  }
+  .callout-box .cb-close {
+    position: absolute;
+    top: 4px; right: 8px;
+    background: none;
+    border: none;
+    color: var(--ink);
+    cursor: pointer;
+    font-size: 20px;
+    line-height: 1;
+    opacity: 0.55;
+    padding: 2px 6px;
+  }
+  .callout-box .cb-close:hover { opacity: 1; }
+
+  /* ============ Inspect mode (a callout is open): dim bgs + other panels,
+     but keep all cut-out leopards crisp. ============ */
+  .hybrid-stage .bg-layer,
+  .hybrid-stage .leo .tag,
+  .hybrid-stage .leo .body,
+  .hybrid-stage .handle { transition: opacity .35s ease; }
+  .hybrid-stage.inspect-active .bg-layer { opacity: 0.32; }
+  .hybrid-stage.inspect-active .leo:not(.info-open) .tag,
+  .hybrid-stage.inspect-active .leo:not(.info-open) .body { opacity: 0.4; }
+  .hybrid-stage.inspect-active .handle { opacity: 0.45; }
+  /* leopard-layer stays at full opacity — the cut-outs are the point. */
+
+  .leo.wounded .bg-layer      { background-image: url('assets/v6b-bg-wounded.png'); }
+  .leo.wounded .leopard-layer { background-image: url('assets/v6b-leopard-wounded.png'); }
+  .leo.summer  .bg-layer      { background-image: url('assets/v6b-bg-summer.png'); }
+  .leo.summer  .leopard-layer { background-image: url('assets/v6-leopard-summer.png'); }
+  .leo.winter  .bg-layer      { background-image: url('assets/v6b-bg-winter.png'); }
+  .leo.winter  .leopard-layer { background-image: url('assets/v6-leopard-winter.png'); }
+
+  .leo .bg-layer { filter: saturate(1) brightness(0.92); transition: filter .3s; }
+  .leo.focused .bg-layer { filter: saturate(1.06) brightness(1); }
+
+  /* ============ Narrow-state behaviour ============
+     Rather than reflowing or collapsing the text when a pane gets narrow,
+     let the overlays simply get clipped along with the photo. Each panel
+     already has overflow:hidden, so we just need to stop the text from
+     wrapping (tag) and stop the body block from being width-constrained
+     by the panel itself. */
+
+  /* gradient veil at the bottom for text legibility */
+  .leo::after {
+    content: '';
+    position: absolute; inset: 0;
+    background:
+      linear-gradient(to top, rgba(0,0,0,0.85) 0%, rgba(0,0,0,0.45) 24%, rgba(0,0,0,0) 50%),
+      linear-gradient(to bottom, rgba(0,0,0,0.35) 0%, rgba(0,0,0,0) 25%);
+    pointer-events: none;
+  }
+  .leo .tag {
+    position: absolute; top: 14px; left: 14px;
+    font-family: var(--f-mono); font-size: 11px;
+    letter-spacing: 0.18em; text-transform: uppercase;
+    background: var(--paper); color: var(--accent);
+    padding: 5px 10px;
+    border: 1px solid var(--accent);
+    z-index: 2;
+    text-shadow: 0 1px 4px rgba(0,0,0,0.5);
+    white-space: nowrap;          /* never wrap; just clip along with the photo */
+  }
+  .leo .num {
+    position: absolute; top: 12px; right: 16px;
+    font-family: var(--f-display); font-size: 36px; line-height: 1;
+    color: var(--ink); opacity: 0.85;
+    text-shadow: 0 2px 8px rgba(0,0,0,0.7);
+    z-index: 2;
+  }
+  .leo .body {
+    position: absolute; left: 22px; right: auto; bottom: 22px;
+    width: 480px;                  /* fixed width — lets the panel clip the block rather than reflow it */
+    z-index: 2;
+    color: var(--ink);
+    text-shadow: 0 2px 14px rgba(0,0,0,0.7);
+  }
+  .leo .body .h {
+    font-family: var(--f-display); font-weight: 700;
+    font-size: clamp(20px, 2.6vw, 40px); line-height: 1; margin-bottom: 8px;
+    color: #fff;
+  }
+
+  /* Click affordance corner mark */
+  .leo .click-cue {
+    position: absolute; right: 14px; bottom: 14px;
+    z-index: 2;
+    font-family: var(--f-body); font-weight: 700; font-size: 14px;
+    color: var(--accent);
+    background: rgba(14,14,14,0.6);
+    padding: 5px 14px; border-radius: 18px;
+    border: 1px solid var(--accent);
+    opacity: 0; transform: translateY(4px);
+    transition: opacity .25s, transform .25s, background .15s, color .15s;
+    pointer-events: none;
+  }
+  .leo:hover:not(.focused) .click-cue { opacity: 1; transform: translateY(0); pointer-events: auto; }
+  .leo:hover:not(.focused) .click-cue:hover { background: var(--accent); color: var(--paper); }
+
+  /* ============ Handles (chunky + easy to grab) ============ */
+  .handle {
+    width: 18px;                  /* wider hit target — grip stays at 5px visual line */
+    cursor: col-resize;
+    background: transparent;
+    position: relative; flex: none;
+    z-index: 5;
+    overflow: visible;
+  }
+  .handle::before {
+    content: '';
+    position: absolute;
+    top: 0; bottom: 0;
+    left: 50%;
+    width: 5px;
+    transform: translateX(-50%);
+    background: var(--accent);
+    transition: background .2s, width .15s;
+    pointer-events: none;
+  }
+  .handle:hover::before { background: var(--accent-2); width: 7px; }
+  .handle .grip {
+    position: absolute;
+    top: 50%; left: 50%;
+    transform: translate(-50%, -50%);
+    width: 44px; height: 44px;     /* larger grip puck */
+    border-radius: 50%;
+    background: var(--paper);
+    border: 2.5px solid var(--accent);
+    display: flex; align-items: center; justify-content: center;
+    gap: 5px;
+    box-shadow: 0 4px 18px rgba(0,0,0,0.6);
+    transition: transform .15s, box-shadow .15s, border-color .15s;
+    pointer-events: none;
+  }
+  .handle:hover .grip { transform: translate(-50%, -50%) scale(1.1); border-color: var(--accent-2); }
+  .handle .grip i {
+    display: block;
+    width: 3px; height: 18px;
+    background: var(--accent);
+    border-radius: 2px;
+  }
+  .hybrid-stage.dragging .handle .grip {
+    transform: translate(-50%, -50%) scale(0.96);
+    box-shadow: 0 1px 6px rgba(0,0,0,0.6);
+  }
+
+  /* ============ Below stage ============ */
+  .below { padding: 40px 36px; }
+  .intro {
+    display: grid; grid-template-columns: 1.1fr 2fr;
+    gap: 40px; padding-bottom: 32px;
+    border-bottom: 1px dashed var(--line);
+    margin-bottom: 32px;
+  }
+  .intro .kicker {
+    font-family: var(--f-mono); font-size: 11px;
+    letter-spacing: 0.22em; text-transform: uppercase; color: var(--accent);
+    margin-bottom: 10px;
+  }
+  .intro h2 {
+    font-family: var(--f-display); font-weight: 700;
+    font-size: clamp(44px, 5vw, 64px); line-height: 0.95; margin: 0 0 8px;
+    color: var(--ink);
+    text-wrap: balance;
+  }
+  .intro h2 .acc { color: var(--accent); }
+  .intro .lede {
+    font-family: var(--f-body); font-size: 19px; line-height: 1.55;
+    color: var(--ink);
+    text-wrap: pretty;
+  }
+  .stats {
+    display: grid; grid-template-columns: repeat(3, 1fr);
+    gap: 14px; align-content: start;
+    margin-top: 20px;
+  }
+  .stat {
+    border: 1px solid var(--line);
+    padding: 16px;
+    background: var(--paper-2);
+  }
+  .stat .n {
+    font-family: var(--f-display); font-weight: 700; font-size: 50px; line-height: 1;
+    color: var(--accent);
+  }
+  .stat .l {
+    font-family: var(--f-mono); font-size: 10px;
+    letter-spacing: 0.18em; text-transform: uppercase; color: var(--ink-dim);
+    margin-top: 4px;
+  }
+
+  /* ============ FAQ ============ */
+  .faq-head { display: flex; align-items: baseline; gap: 18px; margin-bottom: 14px; }
+  .faq-head .k {
+    font-family: var(--f-mono); font-size: 11px;
+    letter-spacing: 0.22em; text-transform: uppercase; color: var(--accent);
+  }
+  .faq-head h3 {
+    font-family: var(--f-display); font-weight: 700;
+    font-size: 44px; line-height: 1; margin: 0; color: var(--ink);
+  }
+  .faq { border-top: 1px solid var(--line); }
+  .faq-item {
+    border-bottom: 1px solid var(--line);
+    padding: 18px 8px;
+    transition: background .2s;
+  }
+  .faq-item.open { background: var(--paper-2); }
+  .faq-item .summary {
+    cursor: pointer;
+    display: flex; align-items: baseline; gap: 16px;
+    user-select: none;
+  }
+  .faq .q-num {
+    font-family: var(--f-mono); font-size: 13px;
+    letter-spacing: 0.18em; color: var(--accent); flex: none; min-width: 40px;
+  }
+  .faq .q {
+    font-family: var(--f-display); font-weight: 700; font-size: 28px;
+    line-height: 1.15; flex: 1; color: var(--ink);
+  }
+  .faq .chev {
+    font-family: var(--f-display); font-size: 34px;
+    transition: transform .25s; color: var(--accent);
+  }
+  .faq-item.open .chev { transform: rotate(45deg); }
+  .faq-item .a-wrap {
+    display: grid;
+    grid-template-rows: 0fr;
+    transition: grid-template-rows .35s ease;
+  }
+  .faq-item.open .a-wrap { grid-template-rows: 1fr; }
+  .faq-item .a-inner { overflow: hidden; }
+  .faq .a {
+    padding: 14px 0 6px 56px;
+    font-family: var(--f-body); font-size: 17px; line-height: 1.6;
+    max-width: 780px;
+    color: var(--ink);
+    text-wrap: pretty;
+  }
+  .faq .a .ex {
+    margin-top: 12px;
+    padding: 12px 16px;
+    border-left: 3px solid var(--accent);
+    background: var(--paper-3);
+    font-style: italic; font-size: 16px;
+    color: var(--ink);
+  }
+  .faq .a .ex .lbl {
+    font-family: var(--f-mono); font-style: normal;
+    font-size: 10px; letter-spacing: 0.18em; text-transform: uppercase;
+    color: var(--accent); display: block; margin-bottom: 4px;
+  }
+
+  .foot {
+    border-top: 1px dashed var(--line);
+    margin-top: 28px; padding-top: 16px;
+    display: flex; gap: 18px; flex-wrap: wrap;
+    font-family: var(--f-mono); font-size: 11px;
+    letter-spacing: 0.18em; text-transform: uppercase; color: var(--ink-dim);
+  }
+  .foot .grow { flex: 1; }
+  .foot .back-top {
+    font-family: var(--f-mono);
+    font-size: 11px; letter-spacing: 0.18em; text-transform: uppercase;
+    background: transparent;
+    border: 1px solid var(--accent);
+    color: var(--accent);
+    padding: 6px 12px;
+    border-radius: 18px;
+    cursor: pointer;
+    transition: background .15s, color .15s;
+  }
+  .foot .back-top:hover { background: var(--accent); color: var(--paper); }
+
+  /* "Reset" button below the stage */
+  .ctrl-row {
+    display: flex; gap: 14px; align-items: center;
+    padding: 12px 22px;
+    background: var(--paper-2);
+    border-bottom: 1px solid var(--line);
+    font-family: var(--f-body); font-size: 14px; color: var(--ink-dim);
+  }
+  .ctrl-row .reset {
+    font-family: var(--f-body); font-weight: 700; font-size: 14px;
+    background: transparent; color: var(--accent);
+    border: 1px solid var(--accent); border-radius: 18px;
+    padding: 5px 14px; cursor: pointer;
+  }
+  .ctrl-row .reset:hover { background: var(--accent); color: var(--paper); }
+  .ctrl-row .meter {
+    margin-left: auto; display: flex; gap: 14px;
+    font-family: var(--f-mono); font-size: 11px;
+    letter-spacing: 0.16em; text-transform: uppercase;
+  }
+  .meter b { color: var(--accent); font-family: var(--f-display); font-weight: 700; font-size: 18px; }
+
+
+</style>
+</head>
+<body>
+
+<div class="nav-bar" id="navBar">
+  <a class="logo" href="#top">Panthera pardus <span class="acc">orientalis</span></a>
+  <div class="links">
+    <button type="button" class="nav-link cur" data-target="#top">The Exhibit</button>
+    <button type="button" class="nav-link" data-target="#statement">Artist's Statement</button>
+  </div>
+</div>
+
+<section class="wf" id="top">
+  <div class="wf-header">
+    <div>
+      <div class="title">Three <span class="acc">selves,</span> one species</div>
+    </div>
+  </div>
+
+  <div class="page">
+    <div class="hybrid-stage" id="exhibit">
+      <div class="panes" id="panes">
+        <div class="leo wounded" data-key="wounded">
+          <div class="composition">
+            <div class="bg-layer"></div>
+            <div class="leopard-layer"></div>
+            <svg class="callout-svg" aria-hidden="true">
+              <line />
+              <circle class="anchor" />
+            </svg>
+            <button class="hotspot" type="button" aria-label="Inspect the wound"></button>
+            <div class="callout">
+              <div class="callout-box" role="dialog">
+                <button class="cb-close" type="button" aria-label="Close">×</button>
+                <div class="cb-label">The Wound</div>
+                <div class="cb-text">Poached for bone & pelt · every loss narrows a gene pool already stretched to its limit.</div>
+              </div>
+            </div>
+          </div>
+          <div class="tag"><span class="tag-num">i</span><span class="tag-text"> · Wounded</span></div>
+          <div class="body">
+            <div class="h">The wounded self</div>
+          </div>
+          <div class="click-cue">grow this self</div>
+        </div>
+        <div class="handle"><span class="grip"><i></i><i></i></span></div>
+        <div class="leo summer" data-key="summer">
+          <div class="composition">
+            <div class="bg-layer"></div>
+            <div class="leopard-layer"></div>
+            <svg class="callout-svg" aria-hidden="true">
+              <line />
+              <circle class="anchor" />
+            </svg>
+            <button class="hotspot" type="button" aria-label="Inspect the coat"></button>
+            <div class="callout">
+              <div class="callout-box" role="dialog">
+                <button class="cb-close" type="button" aria-label="Close">×</button>
+                <div class="cb-label">The Summer Coat</div>
+                <div class="cb-text">Dark, amber coat &middot; larger rosettes &middot; thinner fur &middot; oak &amp; pine canopy near the Sino-Russian border.</div>
+              </div>
+            </div>
+          </div>
+          <div class="tag"><span class="tag-num">ii</span><span class="tag-text"> · Summer</span></div>
+          <div class="body">
+            <div class="h">The summer self</div>
+          </div>
+          <div class="click-cue">grow this self</div>
+        </div>
+        <div class="handle"><span class="grip"><i></i><i></i></span></div>
+        <div class="leo winter" data-key="winter">
+          <div class="composition">
+            <div class="bg-layer"></div>
+            <div class="leopard-layer"></div>
+            <svg class="callout-svg" aria-hidden="true">
+              <line />
+              <circle class="anchor" />
+            </svg>
+            <button class="hotspot" type="button" aria-label="Inspect the coat"></button>
+            <div class="callout">
+              <div class="callout-box" role="dialog">
+                <button class="cb-close" type="button" aria-label="Close">×</button>
+                <div class="cb-label">The Winter Coat</div>
+                <div class="cb-text">Pale cream coat &middot; smaller rosettes &middot; densest fur &middot; sub-zero conifer forest.</div>
+              </div>
+            </div>
+          </div>
+          <div class="tag"><span class="tag-num">iii</span><span class="tag-text"> · Winter</span></div>
+          <div class="body">
+            <div class="h">The winter self</div>
+          </div>
+          <div class="click-cue">grow this self</div>
+        </div>
+      </div>
+      <div class="ctrl-row">
+        <button class="reset" id="resetBtn">↺ reset to equal thirds</button>
+        <span>click a panel to focus it · drag amber bars to fine-tune</span>
+        <div class="meter">
+          <span>wounded <b id="m1">33%</b></span>
+          <span>summer <b id="m2">33%</b></span>
+          <span>winter <b id="m3">34%</b></span>
+        </div>
+      </div>
+    </div>
+
+    <div class="below">
+      <div class="intro" id="field-notes">
+        <div>
+          <div class="kicker">The Exhibit</div>
+          <h2>One body, <span class="acc">three selves,</span> a thinning gene pool.</h2>
+        </div>
+        <div>
+          <div class="lede">The Amur leopard holds on in a thin strip of Far East Russia. The Amur leopard holds on in a thin strip of Far East Russia. Every individual is a little different, coat density, rosette spacing, body length, all shaped by wherever it was born. When a leopard gets poached it is not just one cat gone, it is a genotype that existed nowhere else. Traps set for deer catch leopards as bycatch, and pelts and bones still cross the border on black markets. With only around 120 adults left, even a few deaths a year push the species closer to a point it cannot come back from.</div>
+          <div class="stats">
+            <div class="stat"><div class="n">~128</div><div class="l">wild adults, 2023</div></div>
+            <div class="stat"><div class="n">#1</div><div class="l">cause: poaching </div></div>
+            <div class="stat"><div class="n">9</div><div class="l">wild-born founders</div></div>
+          </div>
+        </div>
+      </div>
+
+      <div class="faq-head" id="statement">
+        <span class="k">§ Artist's Statement</span>
+      </div>
+      <div class="faq" id="faq"></div>
+
+      <div class="foot" id="support">
+        <span>Far East Russia · Made by Leon Chakraborty · AP Biology Final Project · <a href="https://earth.org/?endangered-species=amur-leopard" target="_blank" rel="noopener" style="color:var(--ink-dim);text-decoration:underline;">Sources</a></span>
+        <span class="grow"></span>
+        <button type="button" class="back-top" id="backTopBtn">↑ back to top</button>
+      </div>
+    </div>
+  </div>
+</section>
+
+<script>
+  // ----- FAQ content -----
+  const FAQ = [
+    { n: '01', q: 'What is the piece, and what is the theme?',
+      a: 'This piece is called "Three Selves, One Species" and it\'s an interactive website with 2 sliders and 3 Amur leopard body types and three backgrounds. By sliding the bars around, you can see the variation between traits in different Amur leopards.' },
+    { n: '02', q: 'How do the visual elements represent genetic diversity?',
+      a: 'Each panel shows a different leopard in a different environment to represent certain phenotypic variation in a population based on environments. I also included a panel with an injured leopard to represent the threat that poaching has on genetic diversity in a population.' },
+    { n: '03', q: 'Why does genetic diversity matter, scientifically?',
+      a: 'Genetic diversity and species longevity is critical for the Amur leopard population because since the Amur leopard has only 9 wild-born founders (ideal amount is 500 for evolutionary potential), the genetic diversity is super low, which means its margin for error is extremely low. So losing even one individual from poaching can take a unique slice of the gene pool with it.' },
+    { n: '04', q: 'Why this style, medium, and technique?',
+      a: 'I built the site with a museum-exhibit layout using dark backgrounds, full photography, and one main interaction where you click or drag to compare the three leopards side by side in their respective environments. The idea was that genetic variation only really shows itself through comparison, so not only does having the viewer drag the panels around allow the viewer to see subtle differences in a leopard, but also allows the viewer to mimic how nature selects for some traits over others.' },
+    { n: '05', q: 'How should viewers engage with the work?',
+      a: 'I hope that the viewers can realize "128 wild Amur leopards left" understates the actual loss, because each leopard is also a unique set of traits the species can never get back.' },
+    { n: '06', q: 'What was the purpose of the piece, and what impact do you want it to have?',
+      a: 'Most conservation coverage focuses on headcount. This piece tries to push past that and argue that the more important number is genetic diversity. I made it because I want people to understand that if even one of these "three" kinds of leopards disappears, such as by poaching, the species will lose options they can never recover from.' }
+  ];
+  document.getElementById('faq').innerHTML = FAQ.map((f, i) => `
+    <div class="faq-item${i === 0 ? ' open' : ''}">
+      <div class="summary">
+        <span class="q-num">${f.n}</span>
+        <span class="q">${f.q}</span>
+        <span class="chev">+</span>
+      </div>
+      <div class="a-wrap"><div class="a-inner"><div class="a">${f.a}</div></div></div>
+    </div>`).join('');
+
+  document.querySelectorAll('.faq-item .summary').forEach(summary => {
+    summary.addEventListener('click', () => {
+      summary.closest('.faq-item').classList.toggle('open');
+    });
+  });
+
+  // ----- Hybrid stage logic -----
+  const stage  = document.getElementById('exhibit');
+  const panes  = stage.querySelectorAll('.leo');
+  const handles = stage.querySelectorAll('.handle');
+  const meters = [document.getElementById('m1'), document.getElementById('m2'), document.getElementById('m3')];
+
+  // weights — normalised on the fly
+  const FOCUS_BIG = 3.2;     // when a panel is clicked, it takes ~64%
+  const FOCUS_SML = 0.9;     // each other panel ~18%
+  const EQUAL     = 1;
+  const MIN       = 0.32;    // minimum any pane can shrink to
+
+  let widths = [EQUAL, EQUAL, EQUAL];
+  let focused = 0;           // index 0..2 — start with summer (matches initial HTML class)
+
+  function apply() {
+    const sum = widths.reduce((a,b)=>a+b,0);
+    panes.forEach((p, i) => {
+      p.style.flex = widths[i] + ' 1 0%';
+      p.classList.toggle('focused', i === focused);
+    });
+    pinCompositions();
+  }
+
+  // Pin EVERY panel's .composition so it spans the full stage width and stays
+  // anchored to stage coordinates rather than panel coordinates. Two effects:
+  //   1. Dragging a handle only changes which WINDOW of each composition is
+  //      visible; the bg + leopard never slide with the panel.
+  //   2. As a panel widens, more of its composition is revealed; the leopard
+  //      and the outline in the bg stay in pixel-perfect register at all sizes.
+  // Also toggles the inspect-hotspot on panels that are wide enough (>= 64%).
+  const HOTSPOT_SHOW_AT = 0.64;
+  function pinCompositions() {
+    const panesEl = document.getElementById('panes');
+    const stageRect = panesEl.getBoundingClientRect();
+    const stageW = stageRect.width;
+    // Sum of pane widths (excludes handle gutters) — matches the meter math.
+    let panesSum = 0;
+    panes.forEach(p => { panesSum += p.getBoundingClientRect().width; });
+    panes.forEach((panel, i) => {
+      const comp = panel.querySelector('.composition');
+      if (!comp) return;
+      const rect = panel.getBoundingClientRect();
+      const offsetLeft = rect.left - stageRect.left;
+      comp.style.left = (-offsetLeft) + 'px';
+      comp.style.width = stageW + 'px';
+      const pct = panesSum > 0 ? Math.round(rect.width / panesSum * 100) : 33;
+      const wide = pct >= 64;
+      panel.classList.toggle('show-hotspot', wide);
+      if (!wide) panel.classList.remove('info-open');
+      if (meters[i]) meters[i].textContent = pct + '%';
+    });
+    // Keep the stage's dim-state in sync with whether any callout is still open.
+    const anyOpen = [...panes].some(p => p.classList.contains('info-open'));
+    stage.classList.toggle('inspect-active', anyOpen);
+  }
+  window.addEventListener('resize', pinCompositions);
+  // Track the CSS flex-grow transition (~550ms) by calling pinCompositions
+  // every frame, so each composition stays glued to its panel as it animates
+  // instead of jumping in only at the start and end.
+  function trackTransition() {
+    const start = performance.now();
+    const tick = (now) => {
+      pinCompositions();
+      if (now - start < 620) requestAnimationFrame(tick);
+    };
+    requestAnimationFrame(tick);
+  }
+
+  function focusOn(idx) {
+    focused = idx;
+    widths = panes.length ? Array.from(panes).map((_, i) => i === idx ? FOCUS_BIG : FOCUS_SML) : widths;
+    apply();
+    trackTransition();
+  }
+  function resetEqual() {
+    widths = [EQUAL, EQUAL, EQUAL];
+    focused = -1;
+    apply();
+    trackTransition();
+  }
+
+  // initial state: equal thirds — full composite body visible
+  resetEqual();
+
+  // click to focus — but only when not currently dragging
+  let suppressClick = false;
+  panes.forEach((p, idx) => {
+    p.addEventListener('click', () => {
+      if (suppressClick) return;
+      focusOn(idx);
+    });
+  });
+
+  // Hotspot interaction — click the amber dot to open this panel's info card.
+  // Stop propagation so the click doesn't bubble to the panel focus handler.
+  function syncInspectActive() {
+    const anyOpen = [...panes].some(p => p.classList.contains('info-open'));
+    stage.classList.toggle('inspect-active', anyOpen);
+  }
+  // CSS-property -> SVG attribute fallback: set line endpoints and anchor
+  // dot from each panel's --hot-x/--hot-y/--box-x/--box-y custom properties.
+  panes.forEach(panel => {
+    const cs = getComputedStyle(panel);
+    const hx = parseFloat(cs.getPropertyValue('--hot-x'));
+    const hy = parseFloat(cs.getPropertyValue('--hot-y'));
+    const bx = parseFloat(cs.getPropertyValue('--box-x'));
+    const by = parseFloat(cs.getPropertyValue('--box-y'));
+    const line = panel.querySelector('.callout-svg line');
+    if (line && !isNaN(hx)) {
+      line.setAttribute('x1', hx + '%');
+      line.setAttribute('y1', hy + '%');
+      line.setAttribute('x2', bx + '%');
+      line.setAttribute('y2', by + '%');
+    }
+    const anchor = panel.querySelector('.callout-svg circle.anchor');
+    if (anchor && !isNaN(bx)) {
+      anchor.setAttribute('cx', bx + '%');
+      anchor.setAttribute('cy', by + '%');
+      anchor.setAttribute('r', 3);
+    }
+  });
+  panes.forEach(panel => {
+    const hot = panel.querySelector('.hotspot');
+    const close = panel.querySelector('.callout-box .cb-close');
+    const box = panel.querySelector('.callout-box');
+    if (hot) {
+      hot.addEventListener('click', (e) => {
+        e.stopPropagation();
+        panes.forEach(p => { if (p !== panel) p.classList.remove('info-open'); });
+        panel.classList.toggle('info-open');
+        syncInspectActive();
+      });
+    }
+    if (close) {
+      close.addEventListener('click', (e) => {
+        e.stopPropagation();
+        panel.classList.remove('info-open');
+        syncInspectActive();
+      });
+    }
+    if (box) {
+      box.addEventListener('click', (e) => e.stopPropagation());
+    }
+  });
+
+  // drag handles
+  handles.forEach((h, idx) => {
+    const grab = (clientX) => {
+      const rect = stage.querySelector('.panes').getBoundingClientRect();
+      const startX = clientX;
+      const start  = [...widths];
+      const totalAdj = start[idx] + start[idx + 1];
+      stage.classList.add('dragging');
+      let raf = null, pendingX = clientX, moved = false;
+
+      function commit() {
+        raf = null;
+        const dx = (pendingX - startX) / rect.width;
+        if (Math.abs(pendingX - startX) > 3) moved = true;
+        const sumAll  = start.reduce((a,b)=>a+b,0);
+        const pairFrac = totalAdj / sumAll;
+        const delta = dx / pairFrac * totalAdj;
+        let a = start[idx]     + delta;
+        let b = start[idx + 1] - delta;
+        if (a < MIN) { b -= (MIN - a); a = MIN; }
+        if (b < MIN) { a -= (MIN - b); b = MIN; }
+        widths[idx]     = a;
+        widths[idx + 1] = b;
+        // After manual drag, recompute which pane is widest -> that becomes "focused"
+        let widestIdx = 0;
+        for (let i = 1; i < widths.length; i++) if (widths[i] > widths[widestIdx]) widestIdx = i;
+        focused = widestIdx;
+        apply();
+      }
+      function onMove(ev) {
+        pendingX = ev.touches ? ev.touches[0].clientX : ev.clientX;
+        if (raf == null) raf = requestAnimationFrame(commit);
+      }
+      function onUp() {
+        stage.classList.remove('dragging');
+        if (moved) {
+          suppressClick = true;
+          setTimeout(() => { suppressClick = false; }, 100);
+        }
+        window.removeEventListener('mousemove', onMove);
+        window.removeEventListener('mouseup', onUp);
+        window.removeEventListener('touchmove', onMove);
+        window.removeEventListener('touchend', onUp);
+      }
+      window.addEventListener('mousemove', onMove);
+      window.addEventListener('mouseup', onUp);
+      window.addEventListener('touchmove', onMove, { passive: true });
+      window.addEventListener('touchend', onUp);
+    };
+    h.addEventListener('mousedown', (e) => { e.preventDefault(); e.stopPropagation(); grab(e.clientX); });
+    h.addEventListener('touchstart', (e) => { e.stopPropagation(); grab(e.touches[0].clientX); }, { passive: true });
+    h.addEventListener('click', (e) => e.stopPropagation());
+  });
+
+  document.getElementById('resetBtn').addEventListener('click', resetEqual);
+</script>
+
+<script>
+  // Manual smooth scroll — bypasses browser/OS animation settings.
+  function smoothScroll(targetY, duration) {
+    const startY = window.scrollY;
+    const diff = targetY - startY;
+    if (Math.abs(diff) < 2) return;
+    const startTime = performance.now();
+    function step(now) {
+      const t = Math.min((now - startTime) / duration, 1);
+      const ease = t < 0.5 ? 4*t*t*t : 1 - Math.pow(-2*t + 2, 3) / 2;
+      window.scrollTo(0, startY + diff * ease);
+      if (t < 1) requestAnimationFrame(step);
+    }
+    requestAnimationFrame(step);
+  }
+  function scrollToTarget(sel) {
+    const el = document.querySelector(sel);
+    if (!el) return;
+    const navH = document.getElementById('navBar').getBoundingClientRect().height;
+    const y = el.getBoundingClientRect().top + window.scrollY - navH - 12;
+    smoothScroll(y, 700);
+  }
+  document.querySelectorAll('.nav-bar .nav-link').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const sel = btn.dataset.target;
+      if (!sel) return;
+      if (sel === '#top') smoothScroll(0, 700);
+      else scrollToTarget(sel);
+    });
+  });
+  document.querySelectorAll('.nav-bar .logo').forEach(a => {
+    a.addEventListener('click', (e) => { e.preventDefault(); smoothScroll(0, 700); });
+  });
+  const backTop = document.getElementById('backTopBtn');
+  if (backTop) backTop.addEventListener('click', () => smoothScroll(0, 700));
+
+  // Scroll-driven sliding nav indicator.
+  // Colors: ink-dim = #b3a98f, accent ≈ oklch(0.84 0.18 68) ≈ #e8aa4b
+  const DIM    = [179, 169, 143];
+  const ACCENT = [232, 170, 75];
+  function lerpRGB(a, b, t) {
+    return 'rgb(' + a.map((v, i) => Math.round(v + (b[i] - v) * t)).join(',') + ')';
+  }
+
+  const linksEl   = document.querySelector('.nav-bar .links');
+  const navBtns   = [...document.querySelectorAll('.nav-bar .nav-link')];
+  const indicator = document.createElement('div');
+  indicator.className = 'nav-indicator';
+  linksEl.appendChild(indicator);
+
+  function getScrollProgress() {
+    const statEl = document.querySelector('#statement');
+    if (!statEl) return 0;
+    const navH = document.getElementById('navBar').getBoundingClientRect().height;
+    const statY = statEl.getBoundingClientRect().top + window.scrollY - navH - 12;
+    // If the page can't scroll far enough to bring #statement to the nav,
+    // complete the transition at the bottom of the page instead.
+    const maxScroll = document.documentElement.scrollHeight - window.innerHeight;
+    const end = Math.min(statY, maxScroll);
+    const start = Math.max(0, end - 500);
+    return Math.min(1, Math.max(0, (window.scrollY - start) / (end - start || 1)));
+  }
+
+  function updateIndicator() {
+    const p = getScrollProgress();
+    const linksRect = linksEl.getBoundingClientRect();
+    const r0 = navBtns[0].getBoundingClientRect();
+    const r1 = navBtns[1].getBoundingClientRect();
+    const x = r0.left - linksRect.left + (r1.left - r0.left) * p;
+    const w = r0.width + (r1.width - r0.width) * p;
+    indicator.style.left  = x + 'px';
+    indicator.style.width = w + 'px';
+    navBtns[0].style.color = lerpRGB(ACCENT, DIM,    p);
+    navBtns[1].style.color = lerpRGB(DIM,    ACCENT, p);
+  }
+
+  window.addEventListener('scroll', updateIndicator, { passive: true });
+  window.addEventListener('resize', updateIndicator);
+  updateIndicator();
+</script>
+
+</body>
+</html>
