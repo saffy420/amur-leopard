@@ -586,28 +586,15 @@
     /* Match the grab area to the visible 44px puck. */
     .handle { width: 44px; }
 
-    /* No hover on touch — surface the affordance permanently. */
-    .leo:not(.focused) .click-cue {
-      opacity: 1; transform: none; pointer-events: none;
-      font-size: 12px; padding: 4px 11px;
-    }
+    /* "grow this self" looks clunky on phones — hide it. */
+    .leo .click-cue { display: none; }
 
     /* The angled SVG connector + tiny 34vw card don't work on a phone.
-       Drop the line and turn the card into a readable bottom sheet that
-       escapes the panel's overflow clip via position:fixed. */
-    .leo .callout-svg { display: none; }
-    .leo .callout-box {
-      position: fixed;
-      left: 12px; right: 12px; bottom: 12px;
-      top: auto;
-      width: auto; max-width: none;
-      padding: 16px 44px 16px 16px;
-      border-radius: 8px;
-      box-shadow: var(--shadow);
-      z-index: 95;
-    }
-    .callout-box .cb-text { font-size: 15px; }
-    .callout-box .cb-close { font-size: 26px; top: 8px; right: 10px; padding: 6px 10px; opacity: 0.8; }
+       Also hide the per-panel card — it lives inside an overflow:hidden
+       panel and mobile browsers won't reliably let position:fixed escape
+       that clip. We use a single body-level sheet (.mobile-sheet) instead. */
+    .leo .callout-svg,
+    .leo .callout-box { display: none; }
 
     .ctrl-row { flex-wrap: wrap; gap: 10px; padding: 11px 14px; font-size: 12px; }
     .ctrl-row .meter { margin-left: 0; width: 100%; gap: 12px; flex-wrap: wrap; }
@@ -643,9 +630,115 @@
     .nav-bar .nav-link { font-size: 11px; padding: 6px 5px; }
   }
 
+  /* ============ Mobile-only chrome (hidden by default) ============ */
+  .mobile-disclaimer,
+  .mobile-sheet,
+  .mobile-sheet-scrim { display: none; }
+
+  @media (max-width: 760px) {
+    .mobile-disclaimer {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 10px 14px;
+      background: var(--paper-2);
+      border-bottom: 1px solid var(--accent);
+      color: var(--ink);
+      font-family: var(--f-mono);
+      font-size: 11px;
+      line-height: 1.4;
+      letter-spacing: 0.04em;
+      position: relative;
+      z-index: 90;
+    }
+    .mobile-disclaimer.dismissed { display: none; }
+    .mobile-disclaimer .md-text { flex: 1; }
+    .mobile-disclaimer .md-text .acc { color: var(--accent); }
+    .mobile-disclaimer .md-dismiss {
+      flex: none;
+      background: transparent;
+      border: 1px solid var(--accent);
+      color: var(--accent);
+      border-radius: 50%;
+      width: 28px; height: 28px;
+      font-size: 16px; line-height: 1;
+      cursor: pointer;
+      padding: 0;
+    }
+
+    .mobile-sheet-scrim {
+      display: block;
+      position: fixed;
+      inset: 0;
+      background: rgba(0,0,0,0.45);
+      z-index: 199;
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity .25s ease;
+    }
+    .mobile-sheet-scrim.open {
+      opacity: 1;
+      pointer-events: auto;
+    }
+
+    .mobile-sheet {
+      display: block;
+      position: fixed;
+      left: 12px; right: 12px; bottom: 12px;
+      background: rgba(14,14,14,0.98);
+      border: 1px solid var(--accent);
+      border-radius: 10px;
+      padding: 16px 48px 16px 16px;
+      color: var(--ink);
+      box-shadow: var(--shadow);
+      z-index: 200;
+      opacity: 0;
+      transform: translateY(12px);
+      pointer-events: none;
+      transition: opacity .25s ease, transform .25s ease;
+    }
+    .mobile-sheet.open {
+      opacity: 1;
+      transform: translateY(0);
+      pointer-events: auto;
+    }
+    .mobile-sheet .ms-label {
+      font-family: var(--f-display);
+      font-size: 11px;
+      letter-spacing: 0.14em;
+      text-transform: uppercase;
+      color: var(--accent);
+      margin-bottom: 6px;
+    }
+    .mobile-sheet .ms-text {
+      font-family: var(--f-body);
+      font-size: 15px;
+      line-height: 1.5;
+      color: var(--ink);
+    }
+    .mobile-sheet .ms-close {
+      position: absolute;
+      top: 8px; right: 10px;
+      background: none;
+      border: none;
+      color: var(--ink);
+      cursor: pointer;
+      font-size: 26px;
+      line-height: 1;
+      opacity: 0.75;
+      padding: 6px 10px;
+    }
+    .mobile-sheet .ms-close:hover { opacity: 1; }
+  }
+
 </style>
 </head>
 <body>
+
+<div class="mobile-disclaimer" id="mobileDisclaimer" role="note">
+  <span class="md-text"><span class="acc">Heads up —</span> this exhibit was built for desktop. The mobile view is a compressed version of the experience.</span>
+  <button type="button" class="md-dismiss" aria-label="Dismiss">×</button>
+</div>
 
 <div class="nav-bar" id="navBar">
   <a class="logo" href="#top">Panthera pardus <span class="acc">orientalis</span></a>
@@ -777,6 +870,13 @@
     </div>
   </div>
 </section>
+
+<div class="mobile-sheet-scrim" id="mobileSheetScrim"></div>
+<div class="mobile-sheet" id="mobileSheet" role="dialog" aria-hidden="true">
+  <button class="ms-close" type="button" aria-label="Close">×</button>
+  <div class="ms-label"></div>
+  <div class="ms-text"></div>
+</div>
 
 <script>
   // ----- FAQ content -----
@@ -932,6 +1032,29 @@
       anchor.setAttribute('r', 3);
     }
   });
+  // Body-level sheet that the per-panel cards delegate to on mobile.
+  // (CSS hides it on desktop, so the JS can run unconditionally.)
+  const mobileSheet      = document.getElementById('mobileSheet');
+  const mobileSheetScrim = document.getElementById('mobileSheetScrim');
+  const sheetLabel       = mobileSheet.querySelector('.ms-label');
+  const sheetText        = mobileSheet.querySelector('.ms-text');
+  const sheetClose       = mobileSheet.querySelector('.ms-close');
+
+  function openMobileSheet(panel) {
+    const label = panel.querySelector('.callout-box .cb-label');
+    const text  = panel.querySelector('.callout-box .cb-text');
+    if (label) sheetLabel.textContent = label.textContent;
+    if (text)  sheetText.innerHTML    = text.innerHTML;
+    mobileSheet.classList.add('open');
+    mobileSheetScrim.classList.add('open');
+    mobileSheet.setAttribute('aria-hidden', 'false');
+  }
+  function closeMobileSheet() {
+    mobileSheet.classList.remove('open');
+    mobileSheetScrim.classList.remove('open');
+    mobileSheet.setAttribute('aria-hidden', 'true');
+  }
+
   panes.forEach(panel => {
     const hot = panel.querySelector('.hotspot');
     const close = panel.querySelector('.callout-box .cb-close');
@@ -940,7 +1063,10 @@
       hot.addEventListener('click', (e) => {
         e.stopPropagation();
         panes.forEach(p => { if (p !== panel) p.classList.remove('info-open'); });
+        const willOpen = !panel.classList.contains('info-open');
         panel.classList.toggle('info-open');
+        if (willOpen) openMobileSheet(panel);
+        else          closeMobileSheet();
         syncInspectActive();
       });
     }
@@ -948,6 +1074,7 @@
       close.addEventListener('click', (e) => {
         e.stopPropagation();
         panel.classList.remove('info-open');
+        closeMobileSheet();
         syncInspectActive();
       });
     }
@@ -955,6 +1082,31 @@
       box.addEventListener('click', (e) => e.stopPropagation());
     }
   });
+
+  sheetClose.addEventListener('click', () => {
+    panes.forEach(p => p.classList.remove('info-open'));
+    closeMobileSheet();
+    syncInspectActive();
+  });
+  mobileSheetScrim.addEventListener('click', () => {
+    panes.forEach(p => p.classList.remove('info-open'));
+    closeMobileSheet();
+    syncInspectActive();
+  });
+
+  // ----- Mobile disclaimer dismissal (persists across visits) -----
+  const disclaimer = document.getElementById('mobileDisclaimer');
+  if (disclaimer) {
+    try {
+      if (localStorage.getItem('mobileDisclaimerDismissed') === '1') {
+        disclaimer.classList.add('dismissed');
+      }
+    } catch (_) {}
+    disclaimer.querySelector('.md-dismiss').addEventListener('click', () => {
+      disclaimer.classList.add('dismissed');
+      try { localStorage.setItem('mobileDisclaimerDismissed', '1'); } catch (_) {}
+    });
+  }
 
   // drag handles
   handles.forEach((h, idx) => {
