@@ -712,13 +712,6 @@
       pointer-events: none;
       z-index: 199;
     }
-    /* Also undo the desktop "inspect-active" dimming on mobile — the sheet
-       is its own UI and shouldn't darken the rest of the exhibit. */
-    .hybrid-stage.inspect-active .bg-layer,
-    .hybrid-stage.inspect-active .leo:not(.info-open) .tag,
-    .hybrid-stage.inspect-active .leo:not(.info-open) .body,
-    .hybrid-stage.inspect-active .handle { opacity: 1; }
-
     .mobile-sheet {
       display: block;
       position: fixed;
