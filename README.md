@@ -4,9 +4,11 @@ An interactive web exhibit about phenotypic variation and conservation of the Am
 
 ## Preview
 
-<!-- Screenshots are worth adding here since the design and interactions are the main point of this project -->
-<!-- Add a screenshot of the exhibit interface -->
-![Project preview](assets/preview.png)
+
+<img width="1440" height="749" alt="Screenshot 2026-06-21 at 2 38 31 AM" src="https://github.com/user-attachments/assets/c169792a-3e41-4c34-b098-a435108387e6" />
+<img width="1440" height="755" alt="Screenshot 2026-06-21 at 2 38 58 AM" src="https://github.com/user-attachments/assets/8d25e3d8-8ff5-4a54-9a8f-cda583b0b77b" />
+<img width="1440" height="752" alt="Screenshot 2026-06-21 at 2 39 26 AM" src="https://github.com/user-attachments/assets/86d95635-e0bd-43c1-bac5-e612b218e158" />
+
 
 ## Why I Built This
 
@@ -16,7 +18,7 @@ The project ended up being as much about design as it was about biology. I wante
 
 ## What I Learned
 
-Most of what I learned on this project was about UX and visual design decisions. It was the first time I really thought about layout as a design problem rather than just putting things on a page.
+Most of what I learned on this project was about UX and visual design decisions. It was the first time I really thought about layout as a design problem rather than just putting things on a page. It was also the first time i had to spend so much time antgonizing over small changes and pixel perfect cuts. I think what im most proud of though is the animations and smoothness, It reminds me of some startup's UI. Next time, I want to explore parallax scrolling and a pixelated art theme(something like claude code's theme). 
 
 A few specific things:
 
